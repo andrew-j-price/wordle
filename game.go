@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"math/rand"
-	"reflect"
+	"sort"
 )
 
 var lettersAvailable []string
@@ -37,21 +37,54 @@ func gameHandler() {
 func analyzeWord(guessed string, actual string) bool {
 	guessSlice := sliceOfString(guessed)
 	actualSlice := sliceOfString(actual)
-	fmt.Printf("guessSlice: is of type: %v, with value: %v\n", reflect.TypeOf(guessSlice), guessSlice)
-	fmt.Printf("actualSlice: is of type: %v, with value: %v\n", reflect.TypeOf(actualSlice), actualSlice)
-	/*
-		for acutal_i, acutal_v := range actualSlice {
-			for guess_i, guess_v := range guessSlice {
-
-
-			}
+	// fmt.Printf("guessSlice: is of type: %v, with value: %v\n", reflect.TypeOf(guessSlice), guessSlice)
+	// fmt.Printf("actualSlice: is of type: %v, with value: %v\n", reflect.TypeOf(actualSlice), actualSlice)
+	for i := 0; i < 5; i++ {
+		analyzeLetter(guessSlice[i], actualSlice[i], actual, i)
+	}
+	for _, r := range lettersYellow {
+		// fmt.Printf("Analyzing yellow letter: %s", r)
+		if stringInSlice(r, lettersGreen) {
+			lettersYellow = removeStringFromSlice(lettersYellow, r)
 		}
-	*/
+	}
 	if guessed == actual {
 		fmt.Printf("Guessed: %s, Actual: %s\n", guessed, actual)
 		return true
 	}
 	return false
+}
+
+func analyzeLetter(guessLetter string, actualLetter string, actualWord string, index int) {
+	// fmt.Printf("Analyzing if: %s, matches: %s, and in: %s\n", guessLetter, actualLetter, actualWord)
+	// If Letter Matches
+	if guessLetter == actualLetter {
+		if !(stringInSlice(guessLetter, lettersGreen)) {
+			lettersGreen = append(lettersGreen, guessLetter)
+		}
+		lettersInWord[index] = guessLetter
+	}
+
+	// If Letter is not in word
+	// TODO: handle double letters
+	// TODO: reference slice of actual word globally
+	if !(stringInSlice(guessLetter, sliceOfString(actualWord))) {
+		if !(stringInSlice(guessLetter, lettersGray)) {
+			lettersGray = append(lettersGray, guessLetter)
+		}
+	}
+
+	// If Letter is in the word
+	if stringInSlice(guessLetter, sliceOfString(actualWord)) {
+		if !(stringInSlice(guessLetter, lettersYellow)) && !(stringInSlice(guessLetter, lettersGreen)) {
+			lettersYellow = append(lettersYellow, guessLetter)
+		}
+	}
+
+	// Remove letter from the guessed letters
+	if stringInSlice(guessLetter, lettersAvailable) {
+		lettersAvailable = removeStringFromSlice(lettersAvailable, guessLetter)
+	}
 }
 
 func getWord() string {
@@ -64,43 +97,17 @@ func getWord() string {
 
 func populateAvailableLetters() {
 	// there probably is a more efficient way
-	lettersAvailable = append(lettersAvailable, "a")
-	lettersAvailable = append(lettersAvailable, "b")
-	lettersAvailable = append(lettersAvailable, "c")
-	lettersAvailable = append(lettersAvailable, "d")
-	lettersAvailable = append(lettersAvailable, "e")
-	lettersAvailable = append(lettersAvailable, "f")
-	lettersAvailable = append(lettersAvailable, "g")
-	lettersAvailable = append(lettersAvailable, "h")
-	lettersAvailable = append(lettersAvailable, "i")
-	lettersAvailable = append(lettersAvailable, "j")
-	lettersAvailable = append(lettersAvailable, "k")
-	lettersAvailable = append(lettersAvailable, "l")
-	lettersAvailable = append(lettersAvailable, "m")
-	lettersAvailable = append(lettersAvailable, "n")
-	lettersAvailable = append(lettersAvailable, "o")
-	lettersAvailable = append(lettersAvailable, "p")
-	lettersAvailable = append(lettersAvailable, "q")
-	lettersAvailable = append(lettersAvailable, "r")
-	lettersAvailable = append(lettersAvailable, "s")
-	lettersAvailable = append(lettersAvailable, "t")
-	lettersAvailable = append(lettersAvailable, "u")
-	lettersAvailable = append(lettersAvailable, "v")
-	lettersAvailable = append(lettersAvailable, "w")
-	lettersAvailable = append(lettersAvailable, "x")
-	lettersAvailable = append(lettersAvailable, "y")
-	lettersAvailable = append(lettersAvailable, "z")
+	lettersAvailable = []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"}
 }
 
 func populateLettersInWord() {
-	lettersInWord[0] = "_"
-	lettersInWord[1] = "_"
-	lettersInWord[2] = "_"
-	lettersInWord[3] = "_"
-	lettersInWord[4] = "_"
+	lettersInWord = [5]string{"_", "_", "_", "_", "_"}
 }
 
 func renderTerminal(attempt int) {
+	sort.Strings(lettersGray)
+	sort.Strings(lettersGreen)
+	sort.Strings(lettersYellow)
 	fmt.Printf("\n\n")
 	fmt.Printf("On try %d out of 6\n", attempt)
 	fmt.Printf("Available letters: %v\n", lettersAvailable)
@@ -122,14 +129,32 @@ func renderTerminalFinal(game bool, word string) {
 	fmt.Printf("\n\n")
 }
 
+func removeStringFromSlice(s []string, r string) []string {
+	for i, v := range s {
+		if v == r {
+			return append(s[:i], s[i+1:]...)
+		}
+	}
+	return s
+}
+
 func sliceOfString(word string) []string {
 	var wordSlice []string
 	for _, r := range word {
-		fmt.Println(string(r))
+		// fmt.Println(string(r))
 		wordSlice = append(wordSlice, string(r))
 	}
-	fmt.Printf("wordSlice: is of type: %v, with value: %v\n", reflect.TypeOf(wordSlice), wordSlice)
+	// fmt.Printf("wordSlice: is of type: %v, with value: %v\n", reflect.TypeOf(wordSlice), wordSlice)
 	return wordSlice
+}
+
+func stringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
 }
 
 func userInput() string {
@@ -137,9 +162,7 @@ func userInput() string {
 	var input string
 	fmt.Scanln(&input)
 	valid, message := validateWord(input)
-	if valid {
-		fmt.Println(message)
-	} else {
+	if !valid {
 		fmt.Println(message)
 		userInput()
 	}
