@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
 	"math/rand"
+	"os"
 	"sort"
 )
 
@@ -11,23 +14,23 @@ var lettersGray []string
 var lettersGreen []string
 var lettersYellow []string
 var lettersInWord [5]string
-var sliceOfWord []string
 
 func gameHandler() {
 	populateAvailableLetters()
 	populateLettersInWord() // defaults to _ _ _ _ _
 	result := false         // defaults to game loss
 	word := getWord()       // gets randomly generated word
-	sliceOfWord = sliceOfString(word)
 	if debugFlow {
 		LoggerDebug.Printf("Game word: %v\n", word)
 	}
 	for attempt := 1; attempt <= 6; attempt++ {
 		renderTerminal(attempt)
-		userWord := userInput()
-		result = analyzeWord(userWord, word)
-		if result {
-			break
+		userWord, err := userInputPrompt()
+		if err == nil {
+			result = analyzeWord(userWord, word)
+			if result {
+				break
+			}
 		}
 	}
 	renderTerminalFinal(result, word)
@@ -96,8 +99,11 @@ func getWord() string {
 }
 
 func populateAvailableLetters() {
-	// there probably is a more efficient way
-	lettersAvailable = []string{"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t", "u", "v", "w", "x", "y", "z"}
+	lettersAvailable = []string{
+		"a", "b", "c", "d", "e", "f", "g", "h", "i",
+		"j", "k", "l", "m", "n", "o", "p", "q", "r",
+		"s", "t", "u", "v", "w", "x", "y", "z",
+	}
 }
 
 func populateLettersInWord() {
@@ -157,26 +163,35 @@ func stringInSlice(a string, list []string) bool {
 	return false
 }
 
-func userInput() string {
-	fmt.Println("Word guess: ")
-	var input string
-	fmt.Scanln(&input)
-	valid, message := validateWord(input)
-	if !valid {
-		fmt.Println(message)
-		userInput()
+func userInputPrompt() (string, error) {
+	var returnErr *error = new(error)
+	maxAttempts := 10
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		// var returnInput string
+		fmt.Println("Word guess: ")
+		scanner := bufio.NewScanner(os.Stdin)
+		scanner.Scan()
+		userInputWord := scanner.Text()
+		validateErr := validateInput(userInputWord)
+		if validateErr == nil {
+			// fmt.Printf("Valid word of %s\n", userInputWord)
+			return userInputWord, nil
+			// break
+		} else {
+			*returnErr = errors.New("invalid input received")
+			// fmt.Println("Print an error about validation error")
+		}
 	}
-	// fmt.Print(input)
-	fmt.Printf("\n")
-	return input
+	return "", *returnErr
 }
 
-func validateWord(word string) (bool, string) {
+func validateInput(word string) error {
+	var err *error = new(error)
 	if len(word) != 5 {
-		message := "Word does not have 5 letters"
-		// fmt.Println(message)
-		return false, message
+		fmt.Println("There is a length error")
+		*err = errors.New("word does not have 5 letters")
+		return *err
 	}
 	// TODO: validate if actual dictionary word
-	return true, "Word is valid"
+	return *err
 }
