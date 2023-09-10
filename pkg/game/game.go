@@ -1,4 +1,4 @@
-package main
+package game
 
 import (
 	"bufio"
@@ -7,6 +7,8 @@ import (
 	"math/rand"
 	"os"
 	"sort"
+
+	"github.com/andrew-j-price/journey/pkg/logger"
 )
 
 var attempt int
@@ -25,14 +27,14 @@ type Entry struct {
 
 var guessedWordMaps []Entry
 
-func gameHandler() {
+func GameHandler(debug bool) {
 	populateAvailableLetters()
 	populateGuessWords()
 	populateLettersInWord() // defaults to _ _ _ _ _
 	result := false         // defaults to game loss
 	word := getWord()       // gets randomly generated word
-	if debugFlow {
-		LoggerDebug.Printf("Game word: %v\n", word)
+	if debug {
+		logger.Debug.Printf("Game word: %v\n", word)
 	}
 	for attempt = 1; attempt <= maxAttempts; attempt++ {
 		renderTerminal(attempt)
@@ -100,7 +102,7 @@ func analyzeLetter(guessLetter string, actualLetter string, actualWord string, i
 			lettersYellow = append(lettersYellow, guessLetter)
 		}
 		// TODO: handle this better if letter is green
-		if colorIndex == 0 {
+		if colorIndex != 2 {
 			colorIndex = 1
 		}
 	}
@@ -114,8 +116,9 @@ func analyzeLetter(guessLetter string, actualLetter string, actualWord string, i
 
 func getWord() string {
 	// static word list for now
-	wordList := []string{"audio", "block", "chain", "flake",
-		"lunch", "noise", "price", "stare", "teach", "zebra"}
+	wordList := []string{"audio", "block", "chain", "chess", "flake",
+		"lunch", "noise", "price", "stare", "teach", "yucky", "zebra"}
+	// wordList = []string{"chess"}
 	randomIndex := rand.Intn(len(wordList))
 	return wordList[randomIndex]
 }
