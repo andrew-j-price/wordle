@@ -9,41 +9,56 @@ import (
 	"sort"
 )
 
+var attempt int
+var maxAttempts int = 6
 var lettersAvailable []string
 var lettersGray []string
 var lettersGreen []string
 var lettersYellow []string
 var lettersInWord [5]string
+var guessWords [][5]string
+
+type Entry struct {
+	Word  []string
+	Color []int // 0 for gray, 1 for yellow, 2 for green
+}
+
+var guessedWordMaps []Entry
 
 func gameHandler() {
 	populateAvailableLetters()
+	populateGuessWords()
 	populateLettersInWord() // defaults to _ _ _ _ _
 	result := false         // defaults to game loss
 	word := getWord()       // gets randomly generated word
 	if debugFlow {
 		LoggerDebug.Printf("Game word: %v\n", word)
 	}
-	for attempt := 1; attempt <= 6; attempt++ {
+	for attempt = 1; attempt <= maxAttempts; attempt++ {
 		renderTerminal(attempt)
 		userWord, err := userInputPrompt()
 		if err == nil {
-			result = analyzeWord(userWord, word)
+			result = analyzeWord(userWord, word, attempt)
 			if result {
 				break
 			}
 		}
 	}
+	renderTerminalBoard()
 	renderTerminalFinal(result, word)
 
 }
 
-func analyzeWord(guessed string, actual string) bool {
+func analyzeWord(guessed string, actual string, attempt int) bool {
 	guessSlice := sliceOfString(guessed)
 	actualSlice := sliceOfString(actual)
 	// fmt.Printf("guessSlice: is of type: %v, with value: %v\n", reflect.TypeOf(guessSlice), guessSlice)
 	// fmt.Printf("actualSlice: is of type: %v, with value: %v\n", reflect.TypeOf(actualSlice), actualSlice)
 	for i := 0; i < 5; i++ {
-		analyzeLetter(guessSlice[i], actualSlice[i], actual, i)
+		colorIndex := analyzeLetter(guessSlice[i], actualSlice[i], actual, i)
+		guessWords[attempt-1][i] = guessSlice[i]
+		guessedWordMaps[attempt-1].Word[i] = guessSlice[i]
+		guessedWordMaps[attempt-1].Color[i] = colorIndex
 	}
 	for _, r := range lettersYellow {
 		// fmt.Printf("Analyzing yellow letter: %s", r)
@@ -58,14 +73,16 @@ func analyzeWord(guessed string, actual string) bool {
 	return false
 }
 
-func analyzeLetter(guessLetter string, actualLetter string, actualWord string, index int) {
+func analyzeLetter(guessLetter string, actualLetter string, actualWord string, index int) int {
 	// fmt.Printf("Analyzing if: %s, matches: %s, and in: %s\n", guessLetter, actualLetter, actualWord)
+	colorIndex := 0
 	// If Letter Matches
 	if guessLetter == actualLetter {
 		if !(stringInSlice(guessLetter, lettersGreen)) {
 			lettersGreen = append(lettersGreen, guessLetter)
 		}
 		lettersInWord[index] = guessLetter
+		colorIndex = 2
 	}
 
 	// If Letter is not in word
@@ -82,12 +99,17 @@ func analyzeLetter(guessLetter string, actualLetter string, actualWord string, i
 		if !(stringInSlice(guessLetter, lettersYellow)) && !(stringInSlice(guessLetter, lettersGreen)) {
 			lettersYellow = append(lettersYellow, guessLetter)
 		}
+		// TODO: handle this better if letter is green
+		if colorIndex == 0 {
+			colorIndex = 1
+		}
 	}
 
 	// Remove letter from the guessed letters
 	if stringInSlice(guessLetter, lettersAvailable) {
 		lettersAvailable = removeStringFromSlice(lettersAvailable, guessLetter)
 	}
+	return colorIndex
 }
 
 func getWord() string {
@@ -108,6 +130,24 @@ func populateAvailableLetters() {
 
 func populateLettersInWord() {
 	lettersInWord = [5]string{"_", "_", "_", "_", "_"}
+	initGuessWords := [5]string{"_", "_", "_", "_", "_"}
+	// Initialize guessWords array of arrays
+	numGuessWords := 6
+	guessWords = make([][5]string, numGuessWords)
+	for i := range guessWords {
+		guessWords[i] = initGuessWords
+	}
+
+}
+
+func populateGuessWords() {
+	guessedWordMaps = make([]Entry, 6)
+	for i := range guessedWordMaps {
+		guessedWordMaps[i] = Entry{
+			Word:  []string{"_", "_", "_", "_", "_"},
+			Color: []int{0, 0, 0, 0, 0},
+		}
+	}
 }
 
 func renderTerminal(attempt int) {
@@ -115,13 +155,50 @@ func renderTerminal(attempt int) {
 	sort.Strings(lettersGreen)
 	sort.Strings(lettersYellow)
 	fmt.Printf("\n\n")
-	fmt.Printf("On try %d out of 6\n", attempt)
+	renderTerminalBoard()
 	fmt.Printf("Available letters: %v\n", lettersAvailable)
-	fmt.Printf("Gray letters: %v\n", lettersGray)
-	fmt.Printf("Green letters: %v\n", lettersGreen)
-	fmt.Printf("Yellow letters: %v\n", lettersYellow)
-	fmt.Printf("Wordle word: %v\n", lettersInWord)
+	fmt.Printf("Gray letters:      %v\n", lettersGray)
+	fmt.Printf("Green letters:     %v\n", lettersGreen)
+	fmt.Printf("Yellow letters:    %v\n", lettersYellow)
+	fmt.Printf("Wordle word:       %v\n", lettersInWord)
 	fmt.Printf("\n\n")
+}
+
+func renderTerminalBoard() {
+	fmt.Printf("###########\n")
+	fmt.Printf("%v\n", guessWords[0])
+	fmt.Printf("%v\n", guessWords[1])
+	fmt.Printf("%v\n", guessWords[2])
+	fmt.Printf("%v\n", guessWords[3])
+	fmt.Printf("%v\n", guessWords[4])
+	fmt.Printf("%v\n", guessWords[5])
+	fmt.Printf("###########\n")
+	fmt.Printf("%v,%v\n", guessedWordMaps[0].Word, guessedWordMaps[0].Color)
+	fmt.Printf("%v,%v\n", guessedWordMaps[1].Word, guessedWordMaps[1].Color)
+	fmt.Printf("%v,%v\n", guessedWordMaps[2].Word, guessedWordMaps[2].Color)
+	fmt.Printf("%v,%v\n", guessedWordMaps[3].Word, guessedWordMaps[3].Color)
+	fmt.Printf("%v,%v\n", guessedWordMaps[4].Word, guessedWordMaps[4].Color)
+	fmt.Printf("%v,%v\n", guessedWordMaps[5].Word, guessedWordMaps[5].Color)
+	fmt.Printf("###########\n")
+	// Iterate through the maps
+	for i := 0; i < len(guessedWordMaps); i++ {
+		word := guessedWordMaps[i].Word
+		value := guessedWordMaps[i].Color
+
+		// Iterate through the letters
+		for j := 0; j < len(word); j++ {
+			switch value[j] {
+			case 1:
+				fmt.Printf("\x1b[33m%s\x1b[0m", string(word[j])) // Yellow color
+			case 2:
+				fmt.Printf("\x1b[32m%s\x1b[0m", string(word[j])) // Green color
+			default:
+				fmt.Print(string(word[j]))
+			}
+		}
+		fmt.Println() // Move to the next line after each word
+	}
+
 }
 
 func renderTerminalFinal(game bool, word string) {
